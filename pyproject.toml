@@ -31,10 +31,13 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = [
-  "ACEBench",
-  "ACEBench.*",
+  "data_all",
+  "data_all.*",
   "model_eval",
   "model_eval.*",
   "model_inference",
   "model_inference.*",
 ]
+
+[tool.setuptools.package-data]
+"data_all" = ["**/*.json"]
