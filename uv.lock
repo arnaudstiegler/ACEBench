@@ -33,7 +33,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.0.1" },
     { name = "tqdm", specifier = "==4.67.1" },
     { name = "urllib3", specifier = "==2.3.0" },
-    { name = "vllm", specifier = ">=0.6.1.post1" },
+    { name = "vllm" },
     { name = "wcwidth", specifier = "==0.2.13" },
 ]
 

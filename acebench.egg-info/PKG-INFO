@@ -35,7 +35,7 @@ Requires-Dist: protobuf
 Requires-Dist: python-dotenv==1.0.1
 Requires-Dist: tqdm==4.67.1
 Requires-Dist: urllib3==2.3.0
-Requires-Dist: vllm>=0.6.1.post1
+Requires-Dist: vllm
 Requires-Dist: wcwidth==0.2.13
 Dynamic: license-file
 
