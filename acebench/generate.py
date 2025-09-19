@@ -1,9 +1,14 @@
 
-import argparse, json, os
-from tqdm import tqdm
-from model_inference.inference_map import inference_map
-from category import ACE_DATA_CATEGORY
+import argparse
+import json
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from tqdm import tqdm
+
+from acebench import REPO_ROOT
+from category import ACE_DATA_CATEGORY
+from model_inference.inference_map import inference_map
 
 
 def get_args():
@@ -41,13 +46,17 @@ def get_args():
 
 
 
-def load_test_cases(base_path, filenames):
+DATA_ROOT = REPO_ROOT / "data_all"
+RESULT_ROOT = REPO_ROOT / "result_all"
+
+
+def load_test_cases(base_path: Path, filenames):
     cases = []
-    
+
     for filename in filenames:
-        file_path = os.path.join(base_path, filename)
+        file_path = base_path / filename
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with file_path.open('r', encoding='utf-8') as file:
                 cases.extend(json.loads(line) for line in file)
         except FileNotFoundError:
             print(f"Error: File not found - {file_path}")
@@ -56,23 +65,23 @@ def load_test_cases(base_path, filenames):
     return cases
 
 
-def sort_json(file):
+def sort_json(file: Path):
     data = []
-    with open(file,'r', encoding='utf-8') as f:
+    with file.open('r', encoding='utf-8') as f:
         for line in f:
             data.append(json.loads(line))
     if "multi_turn" in file and "agent" not in file:
         data = sorted(data, key=lambda x: tuple(map(int, x["id"].split("_")[-2:])))
     else:
         data = sorted(data, key=lambda x: int(x["id"].split("_")[-1]))
-    with open(file, 'w', encoding='utf-8') as f:
+    with file.open('w', encoding='utf-8') as f:
         for entry in data:
             json.dump(entry, f, ensure_ascii=False)
             f.write('\n')  
 
 def generate_singal(args, model_name, test_case):
     model_path = args.model_path 
-    result_path = args.result_path
+    result_path: Path = args.result_path
     model_inference = inference_map[model_name](model_name, model_path, args.temperature, args.top_p, args.max_tokens, args.max_dialog_turns, args.user_model, args.language)
 
     if "agent" in test_case["id"]:
@@ -131,10 +140,10 @@ def generate_singal(args, model_name, test_case):
         }
         model_inference.write_result(result_to_write, model_name, result_path)
 
-def generate_results(args, model_name, test_case, completed_id_set):
+def generate_results(args, model_name, test_cases, completed_id_set):
     with ThreadPoolExecutor(max_workers = args.num_threads) as executor:
         futures = []
-        for test_case in test_cases_total:
+        for test_case in test_cases:
             if test_case["id"] not in completed_id_set:
                 future = executor.submit(generate_singal, args, model_name, test_case)
                 futures.append(future)
@@ -165,12 +174,13 @@ if __name__ == "__main__":
 
     
     paths = {
-        "zh": {"data_path": "./data_all/data_zh/", "result_path": "./result_all/result_zh/"},
-        "en": {"data_path": "./data_all/data_en/", "result_path": "./result_all/result_en/"},
+        "zh": {"data_path": DATA_ROOT / "data_zh", "result_path": RESULT_ROOT / "result_zh"},
+        "en": {"data_path": DATA_ROOT / "data_en", "result_path": RESULT_ROOT / "result_en"},
     }
 
-    data_path = paths[args.language]["data_path"]
-    result_path = paths[args.language]["result_path"]
+    data_path: Path = paths[args.language]["data_path"]
+    result_path: Path = paths[args.language]["result_path"]
+    result_path.mkdir(parents=True, exist_ok=True)
     args.result_path = result_path
 
     # Get the filenames of the test cases
@@ -178,17 +188,16 @@ if __name__ == "__main__":
     test_files = [f"data_{test_name}.json" for test_name in test_names]
 
     for model_name in args.model:
-        folder_path = os.path.join(result_path, model_name)
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        folder_path = result_path / model_name
+        folder_path.mkdir(parents=True, exist_ok=True)
 
         completed_id_set = set()
         # Count the cases that have already been generated to avoid duplication
         for file in test_names:
             file_name = f"data_{file}_result.json"
-            file_path = os.path.join(folder_path, file_name)
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
+            file_path = folder_path / file_name
+            if file_path.exists():
+                with file_path.open('r', encoding='utf-8') as f:
                     for line in f:
                         line_data = json.loads(line)
                         completed_id_set.add(line_data["id"])

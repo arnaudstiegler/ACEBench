@@ -27,16 +27,17 @@ License:     MIT License
 Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE.md
-Requires-Dist: openai==1.64.0
-Requires-Dist: google-generativeai==0.8.3
-Requires-Dist: openpyxl==3.1.5
-Requires-Dist: pandas==2.2.3
-Requires-Dist: protobuf
-Requires-Dist: python-dotenv==1.0.1
-Requires-Dist: tqdm==4.67.1
-Requires-Dist: urllib3==2.3.0
-Requires-Dist: vllm>=0.6.1.post1
-Requires-Dist: wcwidth==0.2.13
+Provides-Extra: dev
+Requires-Dist: openai==1.64.0; extra == "dev"
+Requires-Dist: google-generativeai==0.8.3; extra == "dev"
+Requires-Dist: openpyxl==3.1.5; extra == "dev"
+Requires-Dist: pandas==2.2.3; extra == "dev"
+Requires-Dist: protobuf; extra == "dev"
+Requires-Dist: python-dotenv==1.0.1; extra == "dev"
+Requires-Dist: tqdm==4.67.1; extra == "dev"
+Requires-Dist: urllib3==2.3.0; extra == "dev"
+Requires-Dist: vllm; extra == "dev"
+Requires-Dist: wcwidth==0.2.13; extra == "dev"
 Dynamic: license-file
 
 # ACEBench: Who Wins the Match Point in Tool Usage?
@@ -150,6 +151,22 @@ Execute the following command to install the required dependencies for inference
 ```bash
 pip install -r requirements.txt
 ```
+
+### Using ACEBench as a Git Submodule
+
+You can also embed ACEBench directly inside another repository without installing it as a package. After adding the repository as a Git submodule, make the ACEBench root discoverable to Python (for example by extending `PYTHONPATH` or `sys.path`):
+
+```python
+from pathlib import Path
+import sys
+
+submodule_root = Path(__file__).resolve().parents[1] / "ACEBench"
+sys.path.append(str(submodule_root))
+
+import acebench  # noqa: F401
+```
+
+The `acebench` package then exposes all utilities (e.g. run generation via `python -m acebench.generate` or evaluation via `python -m acebench.eval_main`). Dependencies are not auto-installed in this mode—manage them from your host project using `requirements.txt` or the optional `dev` extras defined in `pyproject.toml`.
 
 ---
 

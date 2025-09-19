@@ -110,6 +110,22 @@ Execute the following command to install the required dependencies for inference
 pip install -r requirements.txt
 ```
 
+### Using ACEBench as a Git Submodule
+
+You can also embed ACEBench directly inside another repository without installing it as a package. After adding the repository as a Git submodule, make the ACEBench root discoverable to Python (for example by extending `PYTHONPATH` or `sys.path`):
+
+```python
+from pathlib import Path
+import sys
+
+submodule_root = Path(__file__).resolve().parents[1] / "ACEBench"
+sys.path.append(str(submodule_root))
+
+import acebench  # noqa: F401
+```
+
+The `acebench` package then exposes all utilities (e.g. run generation via `python -m acebench.generate` or evaluation via `python -m acebench.eval_main`). Dependencies are not auto-installed in this mode—manage them from your host project using `requirements.txt` or the optional `dev` extras defined in `pyproject.toml`.
+
 ---
 
 ## 🗂️ 5\. Data [[Back to Top]](#content)

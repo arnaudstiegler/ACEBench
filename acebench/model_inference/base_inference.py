@@ -1,4 +1,5 @@
-import json, os
+import json
+from pathlib import Path
 
 class BaseHandler:
     model_name: str
@@ -16,10 +17,9 @@ class BaseHandler:
 
 
     def write_result(self, result, model_name, result_path):
+        result_dir = Path(result_path) / model_name
+        result_dir.mkdir(parents=True, exist_ok=True)
 
-        
-        os.makedirs(f"{result_path}{model_name}", exist_ok=True)
-        
         if type(result) is dict:
             result = [result]
 
@@ -28,7 +28,7 @@ class BaseHandler:
                 test_category = entry["id"].rsplit("_", 1)[0]
             else:
                 test_category = "_".join(entry["id"].split("_")[:-2])
-            file_to_write = f"{result_path}{model_name}/data_{test_category}_result.json"
-        
-            with open(file_to_write, "a+", encoding="utf-8") as f:
+            file_to_write = result_dir / f"data_{test_category}_result.json"
+
+            with file_to_write.open("a+", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

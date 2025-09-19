@@ -1,10 +1,13 @@
 
 import glob
 import json
-import os
+from pathlib import Path
+
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
+
+from acebench import REPO_ROOT
 
 from model_eval.utils import *
 from model_eval.checker import *
@@ -13,6 +16,8 @@ from model_inference.prompt_zh import *
 
 REST_API_GROUND_TRUTH_FILE_PATH = "api_status_check_ground_truth_REST.json"
 EXECTUABLE_API_GROUND_TRUTH_FILE_PATH = "api_status_check_ground_truth_executable.json"
+
+RESULT_EXCEL_ROOT = REPO_ROOT / "result_excel"
 
 COLUMNS = [
     "Model",
@@ -53,13 +58,16 @@ def extract_after_test(input_string):
     return parts
 
 def find_file_with_suffix(folder_path, suffix):
-    json_files_pattern = os.path.join(folder_path, "*.json")
-    for json_file in glob.glob(json_files_pattern):
-        if suffix == "multi_turn":
-            json_file = folder_path + "data_multi_turn.json"
-            return json_file
-        if suffix in json_file.split("/")[-1]:
-            return json_file
+    folder = Path(folder_path)
+    if suffix == "multi_turn":
+        candidate = folder / "data_multi_turn.json"
+        return str(candidate)
+
+    for json_file in folder.glob("*.json"):
+        if suffix in json_file.name:
+            return str(json_file)
+
+    return None
 
 def load_file(file_path):
     result = []
@@ -117,44 +125,43 @@ def calculate_unweighted_accuracy(accuracy_dict_list):
     return {"accuracy": round(total_accuracy / len(accuracy_dict_list), 3), "total_count": 0}
 
 def update_result_table_with_score_file(leaderboard_table, score_path):
-    entries = os.scandir(score_path)
+    score_dir = Path(score_path)
+    if not score_dir.exists():
+        return
 
-    # Filter out the subdirectories
-    subdirs = [entry.path for entry in entries if entry.is_dir()]
+    for subdir in score_dir.iterdir():
+        if not subdir.is_dir():
+            continue
 
-    # Traverse each subdirectory
-    for subdir in subdirs:
-        # Pattern to match JSON files in this subdirectory
-        json_files_pattern = os.path.join(subdir, "*.json")
-        model_name = subdir.split(score_path)[1]
-        # Find and process all JSON files in the subdirectory
-        for model_score_json in glob.glob(json_files_pattern):
-            if "process" not in model_score_json:
-                if "agent" not in model_score_json:
-                    metadata = load_file(model_score_json)[0]
-                    accuracy, total_count = metadata["accuracy"], metadata["total_count"]
-                    test_category = model_score_json.split("_score.json")[0].split("/")[-1]
-                    test_category = test_category.split("\\")[-1]
-                    if model_name not in leaderboard_table:
-                        leaderboard_table[model_name] = {}
-                    if test_category not in leaderboard_table[model_name]:
-                        leaderboard_table[model_name][test_category] = {
-                            "accuracy": accuracy,
-                            "total_count": total_count,
-                        }
-                else:
-                    metadata = load_file(model_score_json)[0]
-                    accuracy, process_accuracy, total_count = metadata["end_to_end_accuracy"], metadata["process_accuracy"], metadata["total_count"]
-                    test_category = model_score_json.split("_score.json")[0].split("/")[-1]
-                    test_category = test_category.split("\\")[-1]
-                    if model_name not in leaderboard_table:
-                        leaderboard_table[model_name] = {}
-                    if test_category not in leaderboard_table[model_name]:
-                        leaderboard_table[model_name][test_category] = {
-                            "accuracy": accuracy,
-                            "process_accuracy": process_accuracy,
-                            "total_count": total_count,
-                        }
+        model_name = subdir.name
+
+        for model_score_json in subdir.glob("*.json"):
+            if "process" in model_score_json.name:
+                continue
+
+            metadata = load_file(model_score_json)[0]
+            test_category = model_score_json.stem.replace("_score", "")
+            leaderboard_table.setdefault(model_name, {})
+
+            if "agent" not in model_score_json.name:
+                accuracy = metadata["accuracy"]
+                total_count = metadata["total_count"]
+                leaderboard_table[model_name].setdefault(
+                    test_category,
+                    {"accuracy": accuracy, "total_count": total_count},
+                )
+            else:
+                accuracy = metadata["end_to_end_accuracy"]
+                process_accuracy = metadata["process_accuracy"]
+                total_count = metadata["total_count"]
+                leaderboard_table[model_name].setdefault(
+                    test_category,
+                    {
+                        "accuracy": accuracy,
+                        "process_accuracy": process_accuracy,
+                        "total_count": total_count,
+                    },
+                )
 
 # Calculate weighted accuracy
 def generate_result_csv(leaderboard_table, output_path):
@@ -293,7 +300,9 @@ def generate_result_csv(leaderboard_table, output_path):
             cell = ws.cell(row=i + 1, column=j + 1, value=value)
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    filepath = os.path.join(output_path, "result.xlsx")
+    output_dir = Path(output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    filepath = output_dir / "result.xlsx"
     wb.save(filepath)
 
 def collapse_json_objects(file_path):
@@ -331,10 +340,8 @@ def convert_result_to_excel(model_name, category, paths):
     PROMPT_PATH = paths["PROMPT_PATH"]
     POSSIBLE_ANSWER_PATH = paths["POSSIBLE_ANSWER_PATH"]
     SCORE_PATH = paths["OUTPUT_PATH"]
-    if "zh" in INPUT_PATH:
-        language = "zh"
-    else:
-        language = "en"
+
+    language = "zh" if INPUT_PATH.name.endswith("zh") else "en"
     
     prompt_file = build_data_path(PROMPT_PATH, category)
     answer_file = build_data_path(POSSIBLE_ANSWER_PATH, category)
@@ -413,39 +420,35 @@ def convert_result_to_excel(model_name, category, paths):
     df = pd.DataFrame(prompt_list)
 
     if language == 'zh':
-        folder_path = "../result_excel/zh/" + model_name
+        folder_path = RESULT_EXCEL_ROOT / "zh" / model_name
     elif language == 'en':
-        folder_path = "../result_excel/en/" + model_name
-    save_path = folder_path + "/data_" + category + ".xlsx"
-    if not os.path.exists(folder_path):
-        # Create folder if it doesn't exist
-        os.makedirs(folder_path)
+        folder_path = RESULT_EXCEL_ROOT / "en" / model_name
+    else:
+        folder_path = RESULT_EXCEL_ROOT / language / model_name
+
+    folder_path.mkdir(parents=True, exist_ok=True)
+    save_path = folder_path / f"data_{category}.xlsx"
     df.to_excel(save_path, index=False)
 
 def merge_result(folder_path):
-    # Get all Excel files in the folder
-    excel_files = [f for f in os.listdir(folder_path) if f.endswith('.xlsx')]
+    folder = Path(folder_path)
+    excel_files = sorted(folder.glob('*.xlsx'))
 
-    # List to store data from all files
+    if not excel_files:
+        return
+
     all_data = []
 
-    # Read each Excel file and add its data to all_data
-    for file in excel_files:
-        if "special" not in file and "similar" not in file:
-            file_path = os.path.join(folder_path, file)
-            df = pd.read_excel(file_path)  # Read Excel file
-            all_data.append(df)
-            
-    for file in excel_files:
-        if "special" in file or "similar" in file:
-            file_path = os.path.join(folder_path, file)
-            df = pd.read_excel(file_path)  # Read Excel file
+    for file_path in excel_files:
+        if "special" not in file_path.name and "similar" not in file_path.name:
+            df = pd.read_excel(file_path)
             all_data.append(df)
 
-    # Merge all DataFrames
+    for file_path in excel_files:
+        if "special" in file_path.name or "similar" in file_path.name:
+            df = pd.read_excel(file_path)
+            all_data.append(df)
+
     merged_data = pd.concat(all_data, ignore_index=True)
-    model_name = folder_path.split("/")[-1]
-    save_name = model_name + "_output.xlsx"
-
-    # Write the merged data to a new Excel file
-    merged_data.to_excel(os.path.join(folder_path, save_name), index=False)
+    save_path = folder / f"{folder.name}_output.xlsx"
+    merged_data.to_excel(save_path, index=False)

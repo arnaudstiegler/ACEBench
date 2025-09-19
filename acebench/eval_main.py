@@ -1,16 +1,20 @@
-import sys
+import argparse
+import json
+from pathlib import Path
 
-sys.path.append("../")
-
-from model_eval.checker import *
-from model_eval.utils import *
-from model_eval.evaluation_helper import *
-from category import ACE_DATA_CATEGORY
-import argparse 
-from model_inference.utils import decode_ast
+from acebench import REPO_ROOT
+from acebench.category import ACE_DATA_CATEGORY
+from acebench.model_eval.checker import *
+from acebench.model_eval.utils import *
+from acebench.model_eval.evaluation_helper import *
+from acebench.model_inference.utils import decode_ast
 
 
 RESULT_TABLE = {}
+
+DATA_ROOT = REPO_ROOT / "data_all"
+RESULT_ROOT = REPO_ROOT / "result_all"
+SCORE_ROOT = REPO_ROOT / "score_all"
 
 
 def normal_single_turn_eval(
@@ -112,7 +116,7 @@ def normal_single_turn_eval(
     )
 
     output_file_name = "data_" + test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = Path(OUTPUT_PATH) / model_name
     save_score_as_json(output_file_name, result, output_file_dir)
 
     convert_result_to_excel(model_name, test_category, paths)
@@ -263,7 +267,7 @@ def normal_multi_turn_eval(
     )
 
     output_file_name = "data_" + test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = Path(OUTPUT_PATH) / model_name
     save_score_as_json(output_file_name, result, output_file_dir)
 
     convert_result_to_excel(model_name, test_category, paths)
@@ -351,7 +355,7 @@ def special_eval(model_result, prompt, possible_answer, category, model_name, pa
         },
     )
     output_file_name = "data_" + category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = Path(OUTPUT_PATH) / model_name
     save_score_as_json(output_file_name, wrong_list, output_file_dir)
     convert_result_to_excel(model_name, category, paths)
     return accuracy
@@ -435,7 +439,7 @@ def agent_eval(model_result, prompt, possible_answer, test_category, model_name)
         },
     )
     output_file_name = "data_" + test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = Path(OUTPUT_PATH) / model_name
     save_score_as_json(output_file_name, result, output_file_dir)
     return accuracy, process_accuracy
 
@@ -525,12 +529,13 @@ def agent_eval_process(model_name, model_results, possible_answers, test_categor
     # Calculate the overall accuracy of all entries
     overall_accuracy = total_accuracy / len(model_results)
     overall_accuracy = round(overall_accuracy, 3)  # Keep two decimal places
-    if language == "zh":
-        file_name = "./score_all/score_zh/" + model_name + "/data_" + test_category + "_process.json"
-    elif language == "en":
-        file_name = "./score_all/score_en/" + model_name + "/data_" + test_category + "_process.json"
+
+    process_dir = SCORE_ROOT / f"score_{language}" / model_name
+    process_dir.mkdir(parents=True, exist_ok=True)
+    file_path = process_dir / f"data_{test_category}_process.json"
+
     # Write individual_accuracies to JSON file line by line
-    with open(file_name, 'w', encoding="utf-8") as f:
+    with file_path.open('w', encoding="utf-8") as f:
         for entry in individual_accuracies:
             json.dump(entry, f, ensure_ascii=False)
             f.write("\n")  # Write a newline character to make each JSON object occupy a separate line
@@ -607,19 +612,23 @@ def runner(model_names, categories, paths):
 def get_paths(language):
     base_paths = {
         "zh": {
-            "INPUT_PATH": "./result_all/result_zh/",
-            "PROMPT_PATH": "./data_all/data_zh/",
-            "POSSIBLE_ANSWER_PATH": "./data_all/data_zh/possible_answer/",
-            "OUTPUT_PATH": "./score_all/score_zh/"
+            "INPUT_PATH": RESULT_ROOT / "result_zh",
+            "PROMPT_PATH": DATA_ROOT / "data_zh",
+            "POSSIBLE_ANSWER_PATH": DATA_ROOT / "data_zh" / "possible_answer",
+            "OUTPUT_PATH": SCORE_ROOT / "score_zh",
         },
         "en": {
-            "INPUT_PATH": "./result_all/result_en/",
-            "PROMPT_PATH": "./data_all/data_en/",
-            "POSSIBLE_ANSWER_PATH": "./data_all/data_en/possible_answer/",
-            "OUTPUT_PATH": "./score_all/score_en/"
-        }
+            "INPUT_PATH": RESULT_ROOT / "result_en",
+            "PROMPT_PATH": DATA_ROOT / "data_en",
+            "POSSIBLE_ANSWER_PATH": DATA_ROOT / "data_en" / "possible_answer",
+            "OUTPUT_PATH": SCORE_ROOT / "score_en",
+        },
     }
-    return base_paths.get(language)
+    selected = base_paths.get(language)
+    if selected:
+        for key, value in selected.items():
+            selected[key] = value
+    return selected
 
 
 
@@ -667,5 +676,3 @@ if __name__ == "__main__":
     
     print(f"Models being evaluated: {model_names}")
     print(f"Test categories being used: {test_categories}")
-
-
