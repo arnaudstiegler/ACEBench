@@ -10,9 +10,7 @@ resolution-markers = [
 name = "acebench"
 version = "0.1.0"
 source = { editable = "." }
-
-[package.optional-dependencies]
-dev = [
+dependencies = [
     { name = "google-generativeai" },
     { name = "openai" },
     { name = "openpyxl" },
@@ -27,18 +25,17 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-generativeai", marker = "extra == 'dev'", specifier = "==0.8.3" },
-    { name = "openai", marker = "extra == 'dev'", specifier = "==1.64.0" },
-    { name = "openpyxl", marker = "extra == 'dev'", specifier = "==3.1.5" },
-    { name = "pandas", marker = "extra == 'dev'", specifier = "==2.2.3" },
-    { name = "protobuf", marker = "extra == 'dev'" },
-    { name = "python-dotenv", marker = "extra == 'dev'", specifier = "==1.0.1" },
-    { name = "tqdm", marker = "extra == 'dev'", specifier = "==4.67.1" },
-    { name = "urllib3", marker = "extra == 'dev'", specifier = "==2.3.0" },
-    { name = "vllm", marker = "extra == 'dev'" },
-    { name = "wcwidth", marker = "extra == 'dev'", specifier = "==0.2.13" },
+    { name = "google-generativeai", specifier = "==0.8.3" },
+    { name = "openai", specifier = "==1.64.0" },
+    { name = "openpyxl", specifier = "==3.1.5" },
+    { name = "pandas", specifier = "==2.2.3" },
+    { name = "protobuf" },
+    { name = "python-dotenv", specifier = "==1.0.1" },
+    { name = "tqdm", specifier = "==4.67.1" },
+    { name = "urllib3", specifier = "==2.3.0" },
+    { name = "vllm", specifier = ">=0.6.1.post1" },
+    { name = "wcwidth", specifier = "==0.2.13" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "aiohappyeyeballs"

@@ -2,7 +2,6 @@
 import re 
 import os
 import json
-from pathlib import Path
 from collections import Counter
 
 
@@ -40,8 +39,10 @@ def is_function_call_format_valid(decoded_output):
 
 def save_score_as_json(filename, data, subdir=None):
 
-    target_path = Path(subdir, filename) if subdir else Path(filename)
-    target_path.parent.mkdir(parents=True, exist_ok=True)
+    # If a subdirectory is specified, ensure the subdirectory exists and construct the full file path
+    if subdir:
+        os.makedirs(subdir, exist_ok=True)
+        filename = os.path.join(subdir, filename)
 
     def _find_and_warn_sets(d):
 
@@ -56,7 +57,7 @@ def save_score_as_json(filename, data, subdir=None):
                         _find_and_warn_sets(item)  # Check dictionaries in the list
 
     # Write the list of dictionaries to the file
-    with target_path.open("w", encoding="utf-8") as file:
+    with open(filename, "w", encoding="utf-8") as file:
         for i, entry in enumerate(data):
             _find_and_warn_sets(entry)  # Check and warn about sets
             json_str = json.dumps(entry, ensure_ascii=False)
@@ -118,9 +119,10 @@ def get_possible_answer_type(possible_answer):
 
 def build_result_path(base_path, model_name, category, suffix=".json"):
     file_name = f"data_{category}{suffix}"
-    return Path(base_path) / model_name / file_name
+    return os.path.join(base_path, model_name, file_name)
 
 
 def build_data_path(base_path, category, suffix=".json"):
     file_name = f"data_{category}{suffix}"
-    return Path(base_path) / file_name
+    return os.path.join(base_path, file_name)
+

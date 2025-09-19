@@ -1,21 +1,17 @@
 
 import json
-
+import os
 from wcwidth import wcswidth
 
-from acebench import REPO_ROOT
-
-DATA_ROOT = REPO_ROOT / "data_all"
-
-class Mulit_Step_Scene:
-    def __init__(self, question, initial_state, functions, agent_role, language):
+class Scene:
+    def __init__(self, initial_state, functions, agent_role, user_role, init_message, language):
         self.initial_state = initial_state     
-        self.dialogue_history = [{"sender": "user", "recipient": "agent", "message": question}]  # Initialize the first message as dialogue history
+        self.dialogue_history = [{"sender": "user", "recipient": "agent", "message": init_message}]  # Initialize the first message as dialogue history
         self.final_state = None 
         self.functions = functions              
         self.agent_role = agent_role
+        self.user_role = user_role
         self.inference_data = ""
-        self.question = question
         self.language = language
     
     
@@ -25,7 +21,7 @@ class Mulit_Step_Scene:
         elif self.dialogue_history[-1]["sender"] == "agent":
             self.inference_data += "agent:" + self.dialogue_history[-1]["message"] + "\n"
         elif self.dialogue_history[-1]["sender"] == "execution":
-            self.inference_data += "execution result:" + str(self.dialogue_history[-1]["message"]) + "\n"
+            self.inference_data += "execution:" + str(self.dialogue_history[-1]["message"]) + "\n"
         return self.inference_data
 
 
@@ -39,7 +35,7 @@ class Mulit_Step_Scene:
 
     
     def ljust_with_width(self, s, width):
-        """Left align based on character display width"""
+        
         fill_width = width - wcswidth(s)
         return s + ' ' * fill_width
 
@@ -60,7 +56,7 @@ class Mulit_Step_Scene:
             sender = self.ljust_with_width(dialogue['sender'], sender_width)
             recipient = self.ljust_with_width(dialogue['recipient'], recipient_width)
 
-            # Handle message field, if it's a list, merge it into a string
+            # Process message field, if it's a list, merge it into a string
             content = dialogue['message']
             if isinstance(content, list):
                 new_content = []
@@ -95,16 +91,24 @@ class Mulit_Step_Scene:
                 extra_row = f"| {' '.ljust(index_width)} | {' '.ljust(sender_width)} | {' '.ljust(recipient_width)} | {extra_line} |"
                 rows.append(extra_row)
 
-        # Join table content
+        # Concatenate table content
         table_content = header + "\n" + separator + "\n" + "\n".join(rows)
 
         # Set output filename and path
         # Check if directory exists, create if not
-        language_dir = "data_zh" if self.language == "zh" else "data_en"
-        directory = DATA_ROOT / language_dir / "dialogue_history" / "multi_step" / model_name
-        directory.mkdir(parents=True, exist_ok=True)
-        file_path = directory / f"{test_id}_dialogue_history.txt"
+        if self.language == "zh":
+            directory = f"./data_all/data_zh/dialogue_history/multi_turn/{model_name}"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            file_name = f"{test_id}_dialogue_history.txt"
+            file_path = f"{directory}/{file_name}"
+        elif self.language == "en":
+            directory = f"./data_all/data_en/dialogue_history/multi_turn/{model_name}"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            file_name = f"{test_id}_dialogue_history.txt"
+            file_path = f"{directory}/{file_name}"
 
         # Write table to txt file
-        with file_path.open('w', encoding="utf-8") as f:
+        with open(file_path, 'w', encoding="utf-8") as f:
             f.write(table_content)
