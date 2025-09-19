@@ -26,7 +26,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "google-generativeai", specifier = "==0.8.3" },
-    { name = "openai" },
+    { name = "openai", specifier = "==1.64.0" },
     { name = "openpyxl", specifier = "==3.1.5" },
     { name = "pandas", specifier = "==2.2.3" },
     { name = "protobuf" },
