@@ -27,6 +27,7 @@ dependencies = [
 
 [tool.setuptools]
 include-package-data = true
+py-modules = ["generate", "eval_main"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -38,9 +39,6 @@ include = [
   "model_inference",
   "model_inference.*",
 ]
-
-[tool.setuptools.py-modules]
-py-modules = ["generate", "eval_main"]
 
 [tool.setuptools.package-data]
 "data_all" = ["**/*.json"]

@@ -1,2 +1,5 @@
+data_all
+eval_main
+generate
 model_eval
 model_inference
