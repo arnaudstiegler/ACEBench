@@ -39,5 +39,8 @@ include = [
   "model_inference.*",
 ]
 
+[tool.setuptools.py-modules]
+py-modules = ["generate", "eval_main"]
+
 [tool.setuptools.package-data]
 "data_all" = ["**/*.json"]
